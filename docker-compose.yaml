@@ -2,25 +2,28 @@ version: "3"
 services:
 
   # Generate fake traces...
-  k6-tracing:
-    image: ghcr.io/grafana/xk6-client-tracing:v0.0.2
-    environment:
-      - ENDPOINT=otel-collector:4317
-    restart: always
-    depends_on:
-      - otel-collector
+  # k6-tracing:
+  #   image: ghcr.io/grafana/xk6-client-tracing:v0.0.2
+  #   environment:
+  #     - ENDPOINT=otel-collector:4317
+  #   restart: always
+  #   depends_on:
+  #     - otel-collector
 
   # And put them in an OTEL collector pipeline...
   otel-collector:
-    image: otel/opentelemetry-collector:0.61.0
-    command: [ "--config=/etc/otel-collector.yaml" ]
+    image: otel/opentelemetry-collector-contrib:latest
+    command: "--config=/etc/otel-collector.yaml"
+    ports:
+      - "4317:4317"
+      - "8889:8889"
     volumes:
       - ./otel-collector.yaml:/etc/otel-collector.yaml
 
   # To eventually offload to Tempo...
   tempo:
     image: grafana/tempo:latest
-    command: [ "-config.file=/etc/tempo.yaml" ]
+    command: "-config.file=/etc/tempo.yaml"
     volumes:
       - ./shared/tempo.yaml:/etc/tempo.yaml
       - ./tempo-data:/tmp/tempo
@@ -41,6 +44,12 @@ services:
       - ./shared/prometheus.yaml:/etc/prometheus.yaml
     ports:
       - "9090:9090"
+
+  loki:
+    image: grafana/loki:latest
+    command: "-config.file=/etc/loki/local-config.yaml"
+    ports:
+      - "3100:3100"
 
   grafana:
     image: grafana/grafana:9.3.2
